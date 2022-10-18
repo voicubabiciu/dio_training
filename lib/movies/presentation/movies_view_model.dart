@@ -1,3 +1,4 @@
+import 'package:dio_training/helpers/resource.dart';
 import 'package:dio_training/movies/data/movies_repository.dart';
 import 'package:dio_training/movies/domain/movie.dart';
 import 'package:mobx/mobx.dart';
@@ -12,25 +13,25 @@ abstract class MoviesViewModelBase with Store {
   }
 
   final repository = MovieRepository();
-  @observable
-  bool isLoading = false;
+
+  int currentPageIndex = 0;
 
   @observable
-  String? error;
-
-  @observable
-  ObservableList<Movie> movies = <Movie>[].asObservable();
+  Resource<List<Movie>> moviesResource = const Resource.initial();
 
   @action
-  Future<void> getMovies({final int page = 1}) async {
-    isLoading = true;
+  Future<void> getMovies() async {
+    moviesResource = Resource.loading(data: moviesResource.data);
+    if (moviesResource is ResourceLoading) {}
     try {
-      await Future.delayed(const Duration(seconds: 3));
-      movies = (await repository.getPopularMovies()).asObservable();
+      moviesResource = Resource.success(
+          data: <Movie>[
+        ...moviesResource.data ?? [],
+        ...(await repository.getPopularMovies(page: ++currentPageIndex))
+      ].toList());
     } catch (ex) {
-      error = ex.toString();
-    } finally {
-      isLoading = false;
+      moviesResource =
+          Resource.error(error: ex.toString(), data: moviesResource.data);
     }
   }
 }
